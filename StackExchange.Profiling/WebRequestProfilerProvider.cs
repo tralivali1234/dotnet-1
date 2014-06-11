@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Web;
 using System.Web.Routing;
@@ -128,24 +129,37 @@ namespace StackExchange.Profiling
             // save the profiler
             SaveProfiler(current);
 
+            bool alreadyHasHeaders = false;
             try
             {
-                var arrayOfIds = MiniProfiler.Settings.Storage.GetUnviewedIds(current.User);
-                if (arrayOfIds != null)
-                {
-                    arrayOfIds = arrayOfIds.Distinct().ToList();
-                    if (arrayOfIds.Count > MiniProfiler.Settings.MaxUnviewedProfiles)
-                    {
-                        foreach (var id in arrayOfIds.Take(arrayOfIds.Count - MiniProfiler.Settings.MaxUnviewedProfiles))
-                        {
-                            MiniProfiler.Settings.Storage.SetViewed(current.User, id);
-                        }
-                    }
+                alreadyHasHeaders = response.Headers.AllKeys.Contains("X-MiniProfiler-Ids");
+            } catch {
+                // wont work if not running in integrated pipeline mode in IIS 7
+                // so this will throw an error when running from VS (which we will ignore)
+                // but should work on just about all sites that are being served from IIS
+            }
 
-                    // allow profiling of ajax requests
-                    if (arrayOfIds.Any())
+            try
+            {
+                if (!alreadyHasHeaders) // do not want to add headers more than once to the same request - see issues/#74
+                {
+                    var arrayOfIds = MiniProfiler.Settings.Storage.GetUnviewedIds(current.User);
+                    if (arrayOfIds != null)
                     {
-                        response.AppendHeader("X-MiniProfiler-Ids", arrayOfIds.ToJson());
+                        arrayOfIds = arrayOfIds.Distinct().ToList();
+                        if (arrayOfIds.Count > MiniProfiler.Settings.MaxUnviewedProfiles)
+                        {
+                            foreach (var id in arrayOfIds.Take(arrayOfIds.Count - MiniProfiler.Settings.MaxUnviewedProfiles))
+                            {
+                                MiniProfiler.Settings.Storage.SetViewed(current.User, id);
+                            }
+                        }
+
+                        // allow profiling of ajax requests
+                        if (arrayOfIds.Any())
+                        {
+                            response.AppendHeader("X-MiniProfiler-Ids", arrayOfIds.ToJson());
+                        }
                     }
                 }
             }
