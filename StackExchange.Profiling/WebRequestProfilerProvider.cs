@@ -131,19 +131,22 @@ namespace StackExchange.Profiling
             try
             {
                 var arrayOfIds = MiniProfiler.Settings.Storage.GetUnviewedIds(current.User);
-
-                if (arrayOfIds != null && arrayOfIds.Count > MiniProfiler.Settings.MaxUnviewedProfiles) 
+                if (arrayOfIds != null)
                 {
-                    foreach (var id in arrayOfIds.Take(arrayOfIds.Count - MiniProfiler.Settings.MaxUnviewedProfiles)) 
+                    arrayOfIds = arrayOfIds.Distinct().ToList();
+                    if (arrayOfIds.Count > MiniProfiler.Settings.MaxUnviewedProfiles)
                     {
-                        MiniProfiler.Settings.Storage.SetViewed(current.User, id);
+                        foreach (var id in arrayOfIds.Take(arrayOfIds.Count - MiniProfiler.Settings.MaxUnviewedProfiles))
+                        {
+                            MiniProfiler.Settings.Storage.SetViewed(current.User, id);
+                        }
                     }
-                }
 
-                // allow profiling of ajax requests
-                if (arrayOfIds != null && arrayOfIds.Count > 0)
-                {
-                    response.AppendHeader("X-MiniProfiler-Ids", arrayOfIds.ToJson());
+                    // allow profiling of ajax requests
+                    if (arrayOfIds.Any())
+                    {
+                        response.AppendHeader("X-MiniProfiler-Ids", arrayOfIds.ToJson());
+                    }
                 }
             }
             catch
